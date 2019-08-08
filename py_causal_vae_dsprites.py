@@ -30,7 +30,7 @@ Further, the objective of any generative model is essentially to capture underly
 ### Goal:
 To include the latent factors  as labels in the training and to invent a causal story that relates these factors and the images in a DAG.
 
-Reference 
+Reference
 
 [Structured Disentangled Representation](https://arxiv.org/pdf/1804.02086.pdf)
 """
@@ -108,18 +108,18 @@ printm()
 
 class Encoder(nn.Module):
   """
-  Encoder module of VAE 
+  Encoder module of VAE
   """
     def __init__(self, image_dim, label_dim, z_dim):
       """
       Constructor to initialize the layers of the encoder neural net
-      
-      args: 
-        image_dim: Input image dimension (X), 
-        label_dim: Label dimensions (Y) , 
+
+      args:
+        image_dim: Input image dimension (X),
+        label_dim: Label dimensions (Y) ,
         z_dim: Distribution of the latent representation
-        
-      
+
+
       """
       super(Encoder, self).__init__()
       #setup image and label dimensions from the dataset
@@ -151,9 +151,9 @@ class Encoder(nn.Module):
       z_loc = self.fc31(hidden2)
       z_scale = torch.exp(self.fc32(hidden2))
       return z_loc, z_scale
-    
+
 class Decoder(nn.Module):
-  
+
     def __init__(self, image_dim, label_dim, z_dim):
       """
       Constructor to initialize the layers of the decoder neural net
@@ -189,9 +189,9 @@ class CVAE(nn.Module):
 
     def __init__(self, config_enum=None, use_cuda=False, aux_loss_multiplier=None):
       """
-      
+
       """
-      
+
 
       super(CVAE, self).__init__()
 
@@ -199,7 +199,7 @@ class CVAE(nn.Module):
       self.label_shape = np.array((1,3,6,40,32,32))
       self.label_names = np.array(('color', 'shape', 'scale', 'orientation', 'posX', 'posY'))
       self.label_dim = np.sum(self.label_shape)
-      self.z_dim = 50                                           
+      self.z_dim = 50
       self.allow_broadcast = config_enum == 'parallel'
       self.use_cuda = use_cuda
       self.aux_loss_multiplier = aux_loss_multiplier
@@ -240,10 +240,10 @@ class CVAE(nn.Module):
             prior_loc = torch.zeros(batch_size, self.z_dim, **options)
             prior_scale = torch.ones(batch_size, self.z_dim, **options)
             zs = pyro.sample("z", dist.Normal(prior_loc, prior_scale).to_event(1))
-            
+
             # if the label y (which digit to write) is supervised, sample from the
             # constant prior, otherwise, observe the value (i.e. score it against the constant prior)
-    
+
             loc = self.decoder.forward(zs, self.remap_y(ys))
             pyro.sample("x", dist.Bernoulli(loc).to_event(1), obs=xs)
             # return the loc so we can visualize it later
@@ -252,7 +252,7 @@ class CVAE(nn.Module):
     def guide(self, xs, ys):
         """
         The guide corresponds to the following:
-        q(z|x,y) = normal(loc(x,y),scale(x,y))       # infer latent class from an image and the label 
+        q(z|x,y) = normal(loc(x,y),scale(x,y))       # infer latent class from an image and the label
         loc, scale are given by a neural network `encoder`
 
         :param xs: a batch of scaled vectors of pixels from an image
@@ -262,20 +262,20 @@ class CVAE(nn.Module):
         with pyro.plate("data"):
             # sample (and score) the latent handwriting-style with the variational
             # distribution q(z|x) = normal(loc(x),scale(x))
-    
+
             loc, scale = self.encoder.forward(xs, self.remap_y(ys))
             pyro.sample("z", dist.Normal(loc, scale).to_event(1))
-            
+
     def remap_y(self, ys):
         new_ys = []
         options = dict(dtype=ys.dtype, device=ys.device)
         for i, label_length in enumerate(self.label_shape):
             prior = torch.ones(ys.size(0), label_length, **options) / (1.0 * label_length)
-            new_ys.append(pyro.sample("y_%s" % self.label_names[i], dist.OneHotCategorical(prior), 
+            new_ys.append(pyro.sample("y_%s" % self.label_names[i], dist.OneHotCategorical(prior),
                                    obs=torch.nn.functional.one_hot(ys[:,i].to(torch.int64), int(label_length))))
         new_ys = torch.cat(new_ys, -1)
         return new_ys.to(torch.float32)
-            
+
     def reconstruct_image(self, xs, ys):
         # backward
         sim_z_loc, sim_z_scale = self.encoder.forward(xs, self.remap_y(ys))
@@ -289,21 +289,21 @@ def setup_data_loaders(train_x, test_x, train_y, test_y, batch_size=128, use_cud
         torch.from_numpy(train_x.astype(np.float32)).reshape(-1, 4096),
         torch.from_numpy(train_y.astype(np.float32))
     )
-    
+
     test_dset = torch.utils.data.TensorDataset(
         torch.from_numpy(test_x.astype(np.float32)).reshape(-1, 4096),
         torch.from_numpy(test_y.astype(np.float32))
-    )    
+    )
     kwargs = {'num_workers': 1, 'pin_memory': use_cuda}
-    
+
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dset, batch_size=batch_size, shuffle=False, **kwargs
     )
-    
+
     test_loader = torch.utils.data.DataLoader(
         dataset=test_dset, batch_size=batch_size, shuffle=False, **kwargs
     )
-    
+
     return {"train":train_loader, "test":test_loader}
 
 dataset_zip = np.load(
@@ -460,7 +460,7 @@ def f(x):
     ax1 = fig.add_subplot(122)
     plt.imshow(recons[x], cmap='Greys_r',  interpolation='nearest')
     plt.axis('off')
-    
+
 interact(f, x=widgets.IntSlider(min=0, max=xs.shape[0], step=1, value=0));
 
 y_names = ['shape', 'scale', 'orientation', 'posX', 'posY']
@@ -475,12 +475,13 @@ def find_in_dataset(shape, scale, orient, posX, posY):
    plt.imshow(img.reshape(64,64), cmap='Greys_r', interpolation='nearest')
    plt.axis('off')
 
-interact(find_in_dataset, 
+interact(find_in_dataset,
          shape=widgets.IntSlider(min=0, max=2, step=1, value=0),
          scale=widgets.IntSlider(min=0, max=5, step=1, value=0),
          orient=widgets.IntSlider(min=0, max=39, step=1, value=0),
          posX=widgets.IntSlider(min=0, max=31, step=1, value=0),
          posY=widgets.IntSlider(min=0, max=31, step=1, value=0))
+
 
 def SCM(vae, mu, sigma):
     z_dim = vae.z_dim
@@ -497,7 +498,7 @@ def SCM(vae, mu, sigma):
         max_ind = torch.argmax(torch.log(new) + gumbel_vars).item()
         Y.append(pyro.sample("Y_%s"%name, dist.Normal(torch.tensor(max_ind * 1.0), 1e-4)))
 #         Y.append(pyro.sample("Y_%s"%name, dist.Delta(torch.tensor(max_ind*1.0))))
-        ys.append(torch.nn.functional.one_hot(torch.tensor(max_ind), int(length)))  
+        ys.append(torch.nn.functional.one_hot(torch.tensor(max_ind), int(length)))
     Y = torch.tensor(Y)
     ys = torch.cat(ys).to(torch.float32).reshape(1,-1).cuda()
     Z = pyro.sample("Z", dist.Normal(mu + Nz*sigma, 1e-4))
@@ -525,7 +526,14 @@ from pyro.infer.mcmc import MCMC
 from pyro.infer.mcmc.nuts import HMC
 from pyro.infer import SVI
 
+"""
+    Are we conditioning correctly?
+    Should we be conditioning on just Y_shape or all Y attributes?
+"""
 intervened_model = pyro.do(SCM, data={"Y_shape": torch.tensor(0.)})
+
+#Also should we just be conditioning on Y only or on all X, Y & Z?
+
 conditioned_model = pyro.condition(SCM, data={
     "X": recon_x1,
 #     "Z": z1,
@@ -538,6 +546,22 @@ conditioned_model = pyro.condition(SCM, data={
    })
 
 #  change to svi
+
+"""
+    HMC is not converging in our case and Importance is giving bad results.
+    We are gonna try Variational Inference using SVI of pyro. If there is
+    anything else we should try let us know.
+"""
+
+"""
+    Also when we are conditioning on Y variables, they do are getting fixed
+    (we checked by printing the Y tensor) but the image (i.e. X) is not
+    following the same pattern (i.e. even though the Y_shape says ellipse,
+    the image can be a heart). We are going to check if this is because of
+    some issue in the VAE and that Z is not being trained correctly. Please
+    give us your suggestions.
+"""
+
 posterior = pyro.infer.Importance(conditioned_model, num_samples = 100)
 posterior.run(vae, mu, sigma)
 
@@ -553,14 +577,14 @@ for i in range(500):
   z = trace.nodes['Nz']['value']
   con_obj = pyro.condition(intervened_model, data = {
       "Nx": x,
-      "Ny_shape": ny_shape, 
-      "Ny_scale": ny_scale, 
-      "Ny_orientation": ny_orientation, 
-      "Ny_posX": ny_posX, 
-      "Ny_posY": ny_posY, 
+      "Ny_shape": ny_shape,
+      "Ny_scale": ny_scale,
+      "Ny_orientation": ny_orientation,
+      "Ny_posX": ny_posX,
+      "Ny_posY": ny_posY,
       "Nz": z
   })
-  
+
 recon_x2,y2,z2 = con_obj(vae, mu, sigma)
 print(y2)
 recon_check(recon_x1.reshape(-1, 64, 64)[0], recon_x2.reshape(-1, 64, 64)[0])
@@ -574,7 +598,7 @@ def recon_check(original, recon):
   ax1 = fig.add_subplot(122)
   plt.imshow(recon , cmap='Greys_r', interpolation='nearest')
   plt.axis('off')
-    
+
 
 def show_density(img1, img2):
   fig = plt.figure()
@@ -584,15 +608,15 @@ def show_density(img1, img2):
   ax1 = fig.add_subplot(122)
   plt.imshow(img2.mean(axis=0) , cmap='Greys_r', interpolation='nearest')
   plt.axis('off')
-  
-  
+
+
 def show_density2(imgs):
   _, ax = plt.subplots()
   ax.imshow(imgs.mean(), interpolation='nearest', cmap='Greys_r')
   ax.grid('off')
   ax.set_xticks([])
   ax.set_yticks([])
-  
+
 
 latents_bases = np.concatenate((label_sizes[::-1].cumprod()[::-1][1:],
                                 np.array([1,])))
@@ -601,4 +625,3 @@ def latent_to_index(latents):
   return np.dot(latents, latents_bases).astype(int)
 
 vae.label_names
-
